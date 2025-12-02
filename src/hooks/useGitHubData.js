@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { checkRateLimit } from '../githubApi';
 
-export const useGitHubData = (fetchFunction, dependencies = []) => {
+export const useGitHubData = (fetchFunction) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,7 +40,7 @@ export const useGitHubData = (fetchFunction, dependencies = []) => {
     return () => {
       mounted = false;
     };
-  }, dependencies);
+  }, [fetchFunction]);
 
   return { data, loading, error };
 };
