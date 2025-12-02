@@ -481,7 +481,7 @@ This project is open source and available under the MIT License.
 
 For issues, questions, or suggestions:
 
-- **GitHub Issues**: https://github.com/NiteshChaudhari-exe/My-Github-Analysics/issues
+- **GitHub Issues**: https://github.com/NiteshChaudhari-exe/Developer-Analytics/issues
 - **Documentation**: See inline code comments and component JSDoc
 - **Local Testing**: Follow the Quick Start section above
 
