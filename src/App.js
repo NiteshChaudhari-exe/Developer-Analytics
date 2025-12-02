@@ -3,7 +3,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { Activity, GitBranch, Code, TrendingUp, Users, Star, GitCommit, Moon, Coffee, AlertCircle } from 'lucide-react';
 import { fetchGitHub, fetchRepoLanguages, batchFetch, fetchGraphQL, fetchAllPagesREST, checkRateLimit, getToken } from './githubApi';
 import { getApiServerUrl } from './utils/apiServer.js';
-import Login from './components/Login';
+import CredentialsModal from './components/CredentialsModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import ConsentBanner from './components/ConsentBanner';
 import analytics from './utils/analytics';
@@ -29,8 +29,9 @@ const ErrorNotification = ({ message, onDismiss }) => (
 
 const EnhancedDeveloperAnalyticsDashboard = () => {
   const [hasToken, setHasToken] = useState(false);
-  const [route, setRoute] = useState(() => (typeof window !== 'undefined' ? window.location.pathname : '/'));
   const [authChecking, setAuthChecking] = useState(true);
+  const [credError, setCredError] = useState(null);
+  const [credLoading, setCredLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [animatedStats, setAnimatedStats] = useState({
@@ -352,21 +353,6 @@ const EnhancedDeveloperAnalyticsDashboard = () => {
     checkAuth();
   }, []);
 
-  // simple client-side navigation helper to make Login a route (/login)
-  useEffect(() => {
-    const onPop = () => setRoute(window.location.pathname);
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
-  }, []);
-
-  function navigate(path, { replace = false } = {}) {
-    try {
-      if (replace) window.history.replaceState({}, '', path);
-      else window.history.pushState({}, '', path);
-    } catch (e) {}
-    setRoute(path);
-  }
-
   async function handleLogout() {
     try {
       const apiServer = getApiServerUrl();
@@ -375,23 +361,53 @@ const EnhancedDeveloperAnalyticsDashboard = () => {
       console.warn('logout failed', e);
     }
     setHasToken(false);
-    navigate('/login', { replace: true });
+    setCredError(null);
   }
 
-  // keep route in sync with auth state: redirect to /login when unauthenticated, to / when authenticated
-  useEffect(() => {
+  async function handleCredentialsSubmit(token) {
+    setCredLoading(true);
+    setCredError(null);
     try {
-      if (authChecking) return; // don't redirect while we are checking auth
-      if (!hasToken && route !== '/login') {
-        navigate('/login', { replace: true });
+      const apiServer = getApiServerUrl();
+      const res = await fetch(`${apiServer.replace(/\/$/, '')}/auth/token/test`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        const errorMsg = json && json.error ? (typeof json.error === 'string' ? json.error : JSON.stringify(json.error)) : `GitHub API error ${res.status}`;
+        setCredError(errorMsg);
+        setCredLoading(false);
+        return;
       }
-      if (hasToken && route === '/login') {
-        navigate('/', { replace: true });
+      setHasToken(true);
+      setCredLoading(false);
+    } catch (e) {
+      try {
+        const apiServer = getApiServerUrl();
+        setCredError(`Network error: failed to reach auth server at ${apiServer}. Is the server running? (${e.message})`);
+      } catch (err) {
+        setCredError(e.message || String(e));
       }
-    } catch (e) {}
-  }, [hasToken, route, authChecking]);
+      setCredLoading(false);
+    }
+  }
 
-  // If no token present, show the login page. The login page stores the token in localStorage.
+  // If no token present and not checking, show the credentials modal
+  if (!authChecking && !hasToken) {
+    return (
+      <ErrorBoundary>
+        <CredentialsModal 
+          onSubmit={handleCredentialsSubmit}
+          isLoading={credLoading}
+          error={credError}
+        />
+      </ErrorBoundary>
+    );
+  }
+
   // Show a splash while we check server-side auth
   if (authChecking) {
     return (
@@ -402,18 +418,6 @@ const EnhancedDeveloperAnalyticsDashboard = () => {
         </div>
       </div>
     );
-  }
-
-  // If we've finished checking server-side auth and there is no token,
-  // render the Login page immediately to avoid flashing the main app UI.
-  if (!authChecking && !hasToken) {
-    return <Login onSaved={() => { setHasToken(true); navigate('/', { replace: true }); }} />;
-  }
-
-  // Route-based guard (kept for explicit routing behavior). If the route is
-  // '/login' and we're not in the middle of an auth check, render Login.
-  if (route === '/login' && !authChecking) {
-    return <Login onSaved={() => { setHasToken(true); navigate('/', { replace: true }); }} />;
   }
 
   // monthlySeries is populated by the detailed GraphQL fetch inside loadGitHubStats
@@ -471,15 +475,6 @@ const EnhancedDeveloperAnalyticsDashboard = () => {
                 title="Logout from GitHub"
               >
                 Logout
-              </button>
-            )}
-            {!hasToken && (
-              <button
-                onClick={() => navigate('/login', { replace: true })}
-                className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
-                title="Login to GitHub"
-              >
-                Login
               </button>
             )}
             <div>

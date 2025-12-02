@@ -18,11 +18,11 @@ A modern, feature-rich dashboard for developers to analyze GitHub activity, repo
 - **Repository Details**: Modal view with detailed repo information
 
 ### Authentication
-- **OAuth Login**: Secure GitHub OAuth flow with httpOnly cookie storage
-- **Personal Access Token**: Direct token entry for quick testing
+- **Credentials Modal**: Simple modal on app startup asking for GitHub credentials
+- **Personal Access Token**: Direct token entry for quick authentication
 - **Auto-Detection**: Detects existing server-side authentication on load
-- **Scope Display**: Shows requested permissions before OAuth authorization
 - **Loading States**: Clear feedback during authentication processes
+- **Easy Re-authentication**: Modal reappears on logout for seamless re-entry
 
 ### Data Management (GDPR-Compliant)
 - **Consent Banner**: User opt-in for analytics before data collection
@@ -99,25 +99,15 @@ REACT_APP_GA_MEASUREMENT_ID=G-XXXXXXXX
 
 ## 📖 Usage Guide
 
-### Login Methods
+### Getting Started
 
-#### 1. OAuth (Recommended for Production)
-
-1. Click **"Login with GitHub (OAuth)"**
-2. (Optional) Click **"Show OAuth scopes"** to preview permissions
-3. Authorize the app on GitHub
-4. Automatically redirected to dashboard
-
-✅ **Benefits**: Secure, no token management, temporary access
-
-#### 2. Personal Access Token (Quick Testing)
-
-1. Enter GitHub token in the input field
-2. Click **"Test token"** to verify
-3. Click **"Save token"** to authenticate
-4. Access dashboard
-
-⚠️ **Note**: Token stored in secure httpOnly cookie server-side, not in browser
+1. **Launch the App**: Open http://localhost:3000
+2. **See Credentials Modal**: A modal will appear asking for your GitHub token
+3. **Enter Token**: Paste your GitHub Personal Access Token
+   - Get one at: https://github.com/settings/tokens
+   - Required scopes: `read:user`, `repo`
+4. **Click Authenticate**: The modal will validate your token
+5. **Access Dashboard**: Once authenticated, you'll see the analytics dashboard
 
 ### Dashboard Navigation
 
@@ -125,7 +115,7 @@ REACT_APP_GA_MEASUREMENT_ID=G-XXXXXXXX
 - **Repositories Tab**: Browse and search your repositories
 - **Privacy Button**: Manage consent and data
 - **Dark/Light Toggle**: Theme preference
-- **Login/Logout**: Authentication controls
+- **Logout Button**: Sign out and return to credentials modal
 
 ### Data Management
 
@@ -143,25 +133,28 @@ REACT_APP_GA_MEASUREMENT_ID=G-XXXXXXXX
 ### How It Works
 
 ```
-┌─────────┐         ┌──────────┐         ┌────────┐
-│  Client │◄────────│  Server  │────────►│ GitHub │
-└─────────┘         └──────────┘         └────────┘
-    │                    │                    │
-    │ Click OAuth        │ Redirect to Auth   │
-    ├───────────────────►├───────────────────►│
-    │                    │                    │
-    │                    │◄─ User Authorizes ─┤
-    │                    │                    │
-    │                    │ Exchange Code      │
-    │                    ├───────────────────►│
-    │                    │◄─ Get Token ───────┤
-    │                    │                    │
-    │◄─ Redirect + Cookie ─┤                  │
-    │                    │ Set httpOnly Cookie
-    │
-    ├─ API calls with credentials: 'include'
-    │ (Sends httpOnly cookie automatically)
-    │
+┌─────────────────┐         ┌──────────┐         ┌────────┐
+│ Client Browser  │◄────────│  Server  │────────►│ GitHub │
+└─────────────────┘         └──────────┘         └────────┘
+    │                            │                    │
+    │ 1. App loads               │                    │
+    ├─────────────────────────────►                   │
+    │ 2. Check auth               │                   │
+    │ (Auto-detect cookie)        │                   │
+    │◄─ No token? Show Modal ─────┤                   │
+    │                             │                   │
+    │ 3. Enter Token              │                   │
+    ├─ POST /auth/token/test ────►│ 4. Validate Token │
+    │                             ├──────────────────►│
+    │                             │ 5. Test on GitHub │
+    │                             │◄──────────────────┤
+    │                             │ 6. Success/Error  │
+    │◄─ Set httpOnly Cookie ──────┤                   │
+    │                             │                   │
+    │ 7. Dashboard loads          │                   │
+    │ API calls include cookie    │                   │
+    │ (credentials: 'include')    │                   │
+    │                             │                   │
 ```
 
 ### Token Storage
@@ -182,11 +175,11 @@ REACT_APP_GA_MEASUREMENT_ID=G-XXXXXXXX
 ```
 My-Github-Analysics/
 ├── src/
-│   ├── App.js                          # Main app & routing
+│   ├── App.js                          # Main app component
 │   ├── githubApi.js                    # API helpers (REST/GraphQL + proxy)
 │   ├── index.css                       # Global styles
 │   ├── components/
-│   │   ├── Login.js                    # OAuth & PAT login
+│   │   ├── CredentialsModal.js         # Token credentials modal
 │   │   ├── ManageData.js               # GDPR data management modal
 │   │   ├── PrivacyPreferences.js       # Privacy settings popover
 │   │   ├── ConsentBanner.js            # Analytics consent banner
